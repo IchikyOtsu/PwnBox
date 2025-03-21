@@ -30,6 +30,9 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import FlagIcon from '@mui/icons-material/Flag';
+import SortIcon from '@mui/icons-material/Sort';
+import SortByAlphaIcon from '@mui/icons-material/SortByAlpha';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import axios, { AxiosError } from 'axios';
 
 interface Challenge {
@@ -48,6 +51,9 @@ interface Challenge {
   created_at: string;
   updated_at: string;
 }
+
+type SortField = 'title' | 'category' | 'difficulty' | 'created_at' | 'solved';
+type SortDirection = 'asc' | 'desc';
 
 const ChallengesList = () => {
   const [challenges, setChallenges] = useState<Challenge[]>([]);
@@ -74,6 +80,8 @@ const ChallengesList = () => {
   const [flagInput, setFlagInput] = useState('');
   const [flagError, setFlagError] = useState<string | null>(null);
   const [flagSuccess, setFlagSuccess] = useState(false);
+  const [sortField, setSortField] = useState<SortField>('created_at');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   useEffect(() => {
     fetchChallenges();
@@ -288,25 +296,82 @@ const ChallengesList = () => {
   const solvedChallenges = challenges.filter(challenge => challenge.solved).length;
   const progress = totalChallenges > 0 ? (solvedChallenges / totalChallenges) * 100 : 0;
 
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const resetFilters = () => {
+    setSortField('created_at');
+    setSortDirection('desc');
+  };
+
+  const sortedChallenges = [...challenges].sort((a, b) => {
+    let comparison = 0;
+    
+    switch (sortField) {
+      case 'title':
+        comparison = a.title.localeCompare(b.title);
+        break;
+      case 'category':
+        comparison = a.category.localeCompare(b.category);
+        break;
+      case 'difficulty':
+        comparison = a.difficulty.localeCompare(b.difficulty);
+        break;
+      case 'created_at':
+        comparison = new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        break;
+      case 'solved':
+        comparison = (a.solved === b.solved) ? 0 : (a.solved ? 1 : -1);
+        break;
+      default:
+        comparison = 0;
+    }
+
+    return sortDirection === 'asc' ? comparison : -comparison;
+  });
+
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" component="h1" gutterBottom>
           Challenges CTF
         </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleOpen}
-          sx={{
-            background: 'linear-gradient(45deg, #00ff00, #4cff4c)',
-            '&:hover': {
-              background: 'linear-gradient(45deg, #4cff4c, #00ff00)',
-            },
-          }}
-        >
-          Ajouter un challenge
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button
+            variant="outlined"
+            startIcon={<RefreshIcon />}
+            onClick={resetFilters}
+            sx={{
+              borderColor: 'primary.main',
+              color: 'primary.main',
+              '&:hover': {
+                borderColor: 'primary.light',
+                backgroundColor: 'rgba(0, 255, 0, 0.1)',
+              },
+            }}
+          >
+            Réinitialiser les filtres
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleOpen}
+            sx={{
+              background: 'linear-gradient(45deg, #00ff00, #4cff4c)',
+              '&:hover': {
+                background: 'linear-gradient(45deg, #4cff4c, #00ff00)',
+              },
+            }}
+          >
+            Ajouter un challenge
+          </Button>
+        </Box>
       </Box>
 
       <Box sx={{ mb: 3 }}>
@@ -343,15 +408,81 @@ const ChallengesList = () => {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Titre</TableCell>
-              <TableCell>Catégorie</TableCell>
-              <TableCell>Difficulté</TableCell>
-              <TableCell>Statut</TableCell>
+              <TableCell 
+                onClick={() => handleSort('title')}
+                sx={{ cursor: 'pointer' }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  Titre
+                  {sortField === 'title' && (
+                    <SortByAlphaIcon sx={{ 
+                      transform: sortDirection === 'desc' ? 'rotate(180deg)' : 'none',
+                      color: 'primary.main'
+                    }} />
+                  )}
+                </Box>
+              </TableCell>
+              <TableCell 
+                onClick={() => handleSort('category')}
+                sx={{ cursor: 'pointer' }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  Catégorie
+                  {sortField === 'category' && (
+                    <SortByAlphaIcon sx={{ 
+                      transform: sortDirection === 'desc' ? 'rotate(180deg)' : 'none',
+                      color: 'primary.main'
+                    }} />
+                  )}
+                </Box>
+              </TableCell>
+              <TableCell 
+                onClick={() => handleSort('difficulty')}
+                sx={{ cursor: 'pointer' }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  Difficulté
+                  {sortField === 'difficulty' && (
+                    <SortByAlphaIcon sx={{ 
+                      transform: sortDirection === 'desc' ? 'rotate(180deg)' : 'none',
+                      color: 'primary.main'
+                    }} />
+                  )}
+                </Box>
+              </TableCell>
+              <TableCell 
+                onClick={() => handleSort('created_at')}
+                sx={{ cursor: 'pointer' }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  Date de création
+                  {sortField === 'created_at' && (
+                    <SortIcon sx={{ 
+                      transform: sortDirection === 'desc' ? 'rotate(180deg)' : 'none',
+                      color: 'primary.main'
+                    }} />
+                  )}
+                </Box>
+              </TableCell>
+              <TableCell 
+                onClick={() => handleSort('solved')}
+                sx={{ cursor: 'pointer' }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  Statut
+                  {sortField === 'solved' && (
+                    <SortIcon sx={{ 
+                      transform: sortDirection === 'desc' ? 'rotate(180deg)' : 'none',
+                      color: 'primary.main'
+                    }} />
+                  )}
+                </Box>
+              </TableCell>
               <TableCell align="right">Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {challenges.map((challenge) => (
+            {sortedChallenges.map((challenge) => (
               <TableRow 
                 key={challenge.id} 
                 hover 
@@ -381,6 +512,15 @@ const ChallengesList = () => {
                       fontWeight: 'bold',
                     }}
                   />
+                </TableCell>
+                <TableCell>
+                  {new Date(challenge.created_at).toLocaleDateString('fr-FR', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
                 </TableCell>
                 <TableCell>
                   <Chip
