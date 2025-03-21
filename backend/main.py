@@ -8,14 +8,17 @@ from .database import engine
 from .routes import tools, challenges
 
 # Créer les tables dans la base de données
-models.Base.metadata.create_all(bind=engine)
+print("Création des tables dans la base de données...")
+models.Base.metadata.drop_all(bind=engine)  # Supprimer toutes les tables existantes
+models.Base.metadata.create_all(bind=engine)  # Recréer toutes les tables
+print("Tables créées avec succès!")
 
 app = FastAPI(title="PwnBox - CTF Training Platform")
 
 # Configuration CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # Autoriser toutes les origines en développement
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
