@@ -5,6 +5,8 @@ import Navbar from './components/Navbar';
 import ToolsList from './components/ToolsList';
 import ChallengesList from './components/ChallengesList';
 import Home from './components/Home';
+import Theory from './components/Theory';
+import Notes from './components/Notes';
 
 function App() {
   return (
@@ -61,8 +63,10 @@ function App() {
           >
             <Routes>
               <Route path="/" element={<Home />} />
+              <Route path="/theory" element={<Theory />} />
               <Route path="/tools" element={<ToolsList />} />
               <Route path="/challenges" element={<ChallengesList />} />
+              <Route path="/notes" element={<Notes />} />
             </Routes>
           </Container>
         </Router>

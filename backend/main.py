@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 from pydantic import BaseModel
@@ -7,21 +7,20 @@ from . import models
 from .database import engine
 from .routes import tools, challenges
 
-# Créer les tables dans la base de données
-print("Création des tables dans la base de données...")
-models.Base.metadata.drop_all(bind=engine)  # Supprimer toutes les tables existantes
-models.Base.metadata.create_all(bind=engine)  # Recréer toutes les tables
-print("Tables créées avec succès!")
+# Créer les tables dans la base de données si elles n'existent pas déjà
+print("Vérification de la structure de la base de données...")
+models.Base.metadata.create_all(bind=engine)
+print("Base de données initialisée avec succès!")
 
 app = FastAPI(title="PwnBox - CTF Training Platform")
 
 # Configuration CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Autoriser toutes les origines en développement
+    allow_origins=["http://localhost:5173"],  # URL du frontend
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # Permet toutes les méthodes
+    allow_headers=["*"],  # Permet tous les headers
 )
 
 # Inclure les routes

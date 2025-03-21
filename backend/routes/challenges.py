@@ -103,21 +103,24 @@ async def upload_challenge_file(
     db.refresh(db_file)
     return db_file
 
-@router.post("/{challenge_id}/check-flag")
+@router.post("/{challenge_id}/check-flag", response_model=dict)
 def check_flag(challenge_id: int, flag_check: schemas.FlagCheck, db: Session = Depends(get_db)):
-    db_challenge = db.query(models.Challenge).filter(models.Challenge.id == challenge_id).first()
-    if db_challenge is None:
-        raise HTTPException(status_code=404, detail="Challenge non trouvé")
-    
-    if db_challenge.flag_pattern:
-        # Vérifier si le flag correspond au pattern
-        if re.match(db_challenge.flag_pattern, flag_check.flag):
-            db_challenge.status = "completed"
-            db.commit()
-            return {"message": "Flag correct !", "status": "success"}
-        return {"message": "Flag incorrect", "status": "error"}
-    else:
-        return {"message": "Aucun pattern de flag défini pour ce challenge", "status": "error"}
+    try:
+        challenge = db.query(models.Challenge).filter(models.Challenge.id == challenge_id).first()
+        if not challenge:
+            raise HTTPException(status_code=404, detail="Challenge non trouvé")
+        
+        # Vérifier si le flag correspond exactement
+        if challenge.correct_flag and flag_check.flag == challenge.correct_flag:
+            return {"status": "success", "message": "Flag correct !"}
+        
+        return {"status": "error", "message": "Flag incorrect"}
+    except Exception as e:
+        print(f"Erreur lors de la vérification du flag: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Une erreur est survenue lors de la vérification du flag: {str(e)}"
+        )
 
 @router.delete("/{challenge_id}")
 def delete_challenge(challenge_id: int, db: Session = Depends(get_db)):

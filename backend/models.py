@@ -25,6 +25,7 @@ class Challenge(Base):
     category = Column(String(50), nullable=False)
     difficulty = Column(String(20))
     solved = Column(Boolean, default=False)
+    correct_flag = Column(String(200))  # Flag correct pour la validation
     resources = Column(JSON)  # Pour stocker les liens, commandes, etc.
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
