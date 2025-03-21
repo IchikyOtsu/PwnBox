@@ -2,6 +2,8 @@ import { AppBar, Toolbar, Typography, Button, Box, IconButton } from '@mui/mater
 import { Link as RouterLink } from 'react-router-dom';
 import SecurityIcon from '@mui/icons-material/Security';
 import BugReportIcon from '@mui/icons-material/BugReport';
+import SchoolIcon from '@mui/icons-material/School';
+import NoteIcon from '@mui/icons-material/Note';
 
 const Navbar = () => {
   return (
@@ -40,7 +42,20 @@ const Navbar = () => {
           <Button
             color="inherit"
             component={RouterLink}
-            to="/"
+            to="/theory"
+            startIcon={<SchoolIcon />}
+            sx={{
+              '&:hover': {
+                background: 'rgba(0, 255, 0, 0.1)',
+              },
+            }}
+          >
+            Théorie
+          </Button>
+          <Button
+            color="inherit"
+            component={RouterLink}
+            to="/tools"
             startIcon={<BugReportIcon />}
             sx={{
               '&:hover': {
@@ -62,6 +77,19 @@ const Navbar = () => {
             }}
           >
             Challenges
+          </Button>
+          <Button
+            color="inherit"
+            component={RouterLink}
+            to="/notes"
+            startIcon={<NoteIcon />}
+            sx={{
+              '&:hover': {
+                background: 'rgba(0, 255, 0, 0.1)',
+              },
+            }}
+          >
+            Notes
           </Button>
         </Box>
       </Toolbar>
