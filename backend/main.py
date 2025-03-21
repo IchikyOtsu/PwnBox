@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 from pydantic import BaseModel
@@ -17,10 +17,10 @@ app = FastAPI(title="PwnBox - CTF Training Platform")
 # Configuration CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Autoriser toutes les origines en développement
+    allow_origins=["http://localhost:5173"],  # URL du frontend
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # Permet toutes les méthodes
+    allow_headers=["*"],  # Permet tous les headers
 )
 
 # Inclure les routes

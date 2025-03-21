@@ -40,6 +40,7 @@ class ChallengeBase(BaseModel):
     description: str
     category: str
     difficulty: Optional[str] = None
+    correct_flag: Optional[str] = None
     resources: Optional[Dict[str, Any]] = None
 
 class ChallengeCreate(ChallengeBase):
@@ -56,5 +57,4 @@ class Challenge(ChallengeBase):
         from_attributes = True
 
 class FlagCheck(BaseModel):
-    challenge_id: int
     flag: str 

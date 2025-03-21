@@ -39,6 +39,7 @@ interface Challenge {
   category: string;
   difficulty: string;
   solved: boolean;
+  correct_flag?: string;
   resources?: {
     links?: string[];
     commands?: string[];
@@ -59,6 +60,7 @@ const ChallengesList = () => {
     description: '',
     category: '',
     difficulty: '',
+    correct_flag: '',
     resources: {
       links: [],
       commands: [],
@@ -69,6 +71,9 @@ const ChallengesList = () => {
   const [editingChallenge, setEditingChallenge] = useState<Challenge | null>(null);
   const [openDelete, setOpenDelete] = useState(false);
   const [deletingChallengeId, setDeletingChallengeId] = useState<number | null>(null);
+  const [flagInput, setFlagInput] = useState('');
+  const [flagError, setFlagError] = useState<string | null>(null);
+  const [flagSuccess, setFlagSuccess] = useState(false);
 
   useEffect(() => {
     fetchChallenges();
@@ -143,12 +148,12 @@ const ChallengesList = () => {
     }
 
     try {
-      // Nettoyer les données avant l'envoi
       const challengeData = {
         title: newChallenge.title.trim(),
         description: newChallenge.description.trim(),
         category: newChallenge.category,
         difficulty: newChallenge.difficulty,
+        correct_flag: newChallenge.correct_flag.trim(),
         resources: newChallenge.resources || {}
       };
 
@@ -163,6 +168,7 @@ const ChallengesList = () => {
         description: '',
         category: '',
         difficulty: '',
+        correct_flag: '',
         resources: {
           links: [],
           commands: [],
@@ -189,6 +195,7 @@ const ChallengesList = () => {
         description: editingChallenge.description.trim(),
         category: editingChallenge.category,
         difficulty: editingChallenge.difficulty,
+        correct_flag: editingChallenge.correct_flag?.trim(),
         resources: editingChallenge.resources || {}
       };
 
@@ -237,6 +244,25 @@ const ChallengesList = () => {
       } else {
         setError('Une erreur est survenue lors de la mise à jour du statut');
       }
+    }
+  };
+
+  const handleFlagSubmit = async (challengeId: number) => {
+    try {
+      const response = await axios.post(`http://localhost:8000/challenges/${challengeId}/check-flag`, {
+        flag: flagInput
+      });
+      
+      if (response.data.status === 'success') {
+        setFlagSuccess(true);
+        setFlagError(null);
+      } else {
+        setFlagSuccess(false);
+        setFlagError('Flag incorrect');
+      }
+    } catch (error) {
+      console.error('Erreur lors de la vérification du flag:', error);
+      setFlagError('Une erreur est survenue lors de la vérification du flag');
     }
   };
 
@@ -549,6 +575,54 @@ const ChallengesList = () => {
                     )}
                   </>
                 )}
+
+                {/* Section Flag */}
+                {!selectedChallenge.solved && (
+                  <Box>
+                    <Typography variant="subtitle1" color="text.secondary" gutterBottom>
+                      Vérifier le flag
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        placeholder="Entrez le flag"
+                        value={flagInput}
+                        onChange={(e) => {
+                          setFlagInput(e.target.value);
+                          setFlagError(null);
+                          setFlagSuccess(false);
+                        }}
+                        error={!!flagError}
+                        helperText={flagError}
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            '& fieldset': {
+                              borderColor: flagSuccess ? 'success.main' : undefined,
+                            },
+                          },
+                        }}
+                      />
+                      <Button
+                        variant="contained"
+                        onClick={() => handleFlagSubmit(selectedChallenge.id)}
+                        disabled={!flagInput}
+                        sx={{
+                          background: flagSuccess 
+                            ? 'success.main'
+                            : 'linear-gradient(45deg, #00ff00, #4cff4c)',
+                          '&:hover': {
+                            background: flagSuccess 
+                              ? 'success.dark'
+                              : 'linear-gradient(45deg, #4cff4c, #00ff00)',
+                          },
+                        }}
+                      >
+                        {flagSuccess ? 'Validé' : 'Vérifier'}
+                      </Button>
+                    </Box>
+                  </Box>
+                )}
               </Stack>
             </DialogContent>
             <DialogActions>
@@ -635,6 +709,13 @@ const ChallengesList = () => {
                 </option>
               ))}
             </TextField>
+            <TextField
+              label="Flag Correct"
+              value={newChallenge.correct_flag}
+              onChange={(e) => setNewChallenge({ ...newChallenge, correct_flag: e.target.value })}
+              fullWidth
+              helperText="Flag correct pour la validation"
+            />
           </Box>
         </DialogContent>
         <DialogActions>
@@ -727,6 +808,13 @@ const ChallengesList = () => {
                     </option>
                   ))}
                 </TextField>
+                <TextField
+                  label="Flag Correct"
+                  value={editingChallenge.correct_flag || ''}
+                  onChange={(e) => setEditingChallenge({ ...editingChallenge, correct_flag: e.target.value })}
+                  fullWidth
+                  helperText="Flag correct pour la validation"
+                />
               </Box>
             </DialogContent>
             <DialogActions>
