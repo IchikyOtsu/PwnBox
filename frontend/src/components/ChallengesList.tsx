@@ -224,7 +224,11 @@ const ChallengesList = () => {
 
   const handleToggleSolved = async (challenge: Challenge) => {
     try {
-      await axios.patch(`http://localhost:8000/challenges/${challenge.id}/toggle-solved`);
+      const response = await axios.patch(`http://localhost:8000/challenges/${challenge.id}/toggle-solved`);
+      // Mettre à jour l'état local
+      if (selectedChallenge && selectedChallenge.id === challenge.id) {
+        setSelectedChallenge(response.data);
+      }
       fetchChallenges();
     } catch (error) {
       console.error('Erreur lors de la mise à jour du statut du challenge:', error);
