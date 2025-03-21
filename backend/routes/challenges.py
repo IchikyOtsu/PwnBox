@@ -13,11 +13,38 @@ router = APIRouter(
 
 @router.post("/", response_model=schemas.Challenge)
 def create_challenge(challenge: schemas.ChallengeCreate, db: Session = Depends(get_db)):
-    db_challenge = models.Challenge(**challenge.dict())
-    db.add(db_challenge)
-    db.commit()
-    db.refresh(db_challenge)
-    return db_challenge
+    try:
+        print(f"Tentative de création d'un challenge avec les données: {challenge.dict()}")
+        
+        if not challenge.title or not challenge.description or not challenge.category:
+            raise HTTPException(
+                status_code=400,
+                detail="Le titre, la description et la catégorie sont requis"
+            )
+        
+        # S'assurer que resources est un dictionnaire valide
+        if challenge.resources is None:
+            challenge.resources = {}
+        
+        # Convertir les données en dictionnaire et retirer les champs None
+        challenge_data = {k: v for k, v in challenge.dict().items() if v is not None}
+        print(f"Données nettoyées pour la création: {challenge_data}")
+        
+        db_challenge = models.Challenge(**challenge_data)
+        print(f"Challenge créé en mémoire: {db_challenge.__dict__}")
+        
+        db.add(db_challenge)
+        db.commit()
+        db.refresh(db_challenge)
+        print(f"Challenge sauvegardé en base de données avec l'ID: {db_challenge.id}")
+        return db_challenge
+    except Exception as e:
+        print(f"Erreur lors de la création du challenge: {str(e)}")
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Une erreur est survenue lors de la création du challenge: {str(e)}"
+        )
 
 @router.get("/", response_model=List[schemas.Challenge])
 def read_challenges(
@@ -90,4 +117,60 @@ def check_flag(challenge_id: int, flag_check: schemas.FlagCheck, db: Session = D
             return {"message": "Flag correct !", "status": "success"}
         return {"message": "Flag incorrect", "status": "error"}
     else:
-        return {"message": "Aucun pattern de flag défini pour ce challenge", "status": "error"} 
+        return {"message": "Aucun pattern de flag défini pour ce challenge", "status": "error"}
+
+@router.delete("/{challenge_id}")
+def delete_challenge(challenge_id: int, db: Session = Depends(get_db)):
+    try:
+        db_challenge = db.query(models.Challenge).filter(models.Challenge.id == challenge_id).first()
+        if db_challenge is None:
+            raise HTTPException(status_code=404, detail="Challenge non trouvé")
+        
+        db.delete(db_challenge)
+        db.commit()
+        return {"message": "Challenge supprimé avec succès"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Une erreur est survenue lors de la suppression du challenge: {str(e)}"
+        )
+
+@router.put("/{challenge_id}", response_model=schemas.Challenge)
+def update_challenge(challenge_id: int, challenge: schemas.ChallengeCreate, db: Session = Depends(get_db)):
+    try:
+        db_challenge = db.query(models.Challenge).filter(models.Challenge.id == challenge_id).first()
+        if db_challenge is None:
+            raise HTTPException(status_code=404, detail="Challenge non trouvé")
+        
+        # Mettre à jour les champs
+        for key, value in challenge.dict(exclude_unset=True).items():
+            setattr(db_challenge, key, value)
+        
+        db.commit()
+        db.refresh(db_challenge)
+        return db_challenge
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Une erreur est survenue lors de la mise à jour du challenge: {str(e)}"
+        )
+
+@router.patch("/{challenge_id}/toggle-solved", response_model=schemas.Challenge)
+def toggle_challenge_solved(challenge_id: int, db: Session = Depends(get_db)):
+    try:
+        db_challenge = db.query(models.Challenge).filter(models.Challenge.id == challenge_id).first()
+        if db_challenge is None:
+            raise HTTPException(status_code=404, detail="Challenge non trouvé")
+        
+        db_challenge.solved = not db_challenge.solved
+        db.commit()
+        db.refresh(db_challenge)
+        return db_challenge
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Une erreur est survenue lors de la mise à jour du statut du challenge: {str(e)}"
+        ) 

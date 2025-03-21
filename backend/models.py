@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Boolean, Table
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Boolean, Table, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
@@ -20,14 +20,12 @@ class Challenge(Base):
     __tablename__ = "challenges"
     
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(200), nullable=False)
+    title = Column(String(200), nullable=False)
+    description = Column(Text, nullable=False)
     category = Column(String(50), nullable=False)
     difficulty = Column(String(20))
-    status = Column(String(20))  # not_started, in_progress, completed
-    source = Column(String(500))
-    flag_pattern = Column(String(200))  # Regex pattern ou flag exact
-    notes = Column(Text)
-    writeup = Column(Text)
+    solved = Column(Boolean, default=False)
+    resources = Column(JSON)  # Pour stocker les liens, commandes, etc.
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 class ToolBase(BaseModel):
@@ -23,7 +23,6 @@ class FileBase(BaseModel):
     name: str
     path: str
     file_type: Optional[str] = None
-    analysis_results: Optional[str] = None
 
 class FileCreate(FileBase):
     challenge_id: int
@@ -37,20 +36,18 @@ class File(FileBase):
         from_attributes = True
 
 class ChallengeBase(BaseModel):
-    name: str
+    title: str
+    description: str
     category: str
     difficulty: Optional[str] = None
-    status: str = "not_started"
-    source: Optional[str] = None
-    flag_pattern: Optional[str] = None
-    notes: Optional[str] = None
-    writeup: Optional[str] = None
+    resources: Optional[Dict[str, Any]] = None
 
 class ChallengeCreate(ChallengeBase):
     pass
 
 class Challenge(ChallengeBase):
     id: int
+    solved: bool = False
     created_at: datetime
     updated_at: datetime
     files: List[File] = []
