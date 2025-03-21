@@ -7,11 +7,10 @@ from . import models
 from .database import engine
 from .routes import tools, challenges
 
-# Créer les tables dans la base de données
-print("Création des tables dans la base de données...")
-models.Base.metadata.drop_all(bind=engine)  # Supprimer toutes les tables existantes
-models.Base.metadata.create_all(bind=engine)  # Recréer toutes les tables
-print("Tables créées avec succès!")
+# Créer les tables dans la base de données si elles n'existent pas déjà
+print("Vérification de la structure de la base de données...")
+models.Base.metadata.create_all(bind=engine)
+print("Base de données initialisée avec succès!")
 
 app = FastAPI(title="PwnBox - CTF Training Platform")
 
