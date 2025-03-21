@@ -4,6 +4,7 @@ import theme from './theme';
 import Navbar from './components/Navbar';
 import ToolsList from './components/ToolsList';
 import ChallengesList from './components/ChallengesList';
+import Home from './components/Home';
 
 function App() {
   return (
@@ -59,7 +60,8 @@ function App() {
             }}
           >
             <Routes>
-              <Route path="/" element={<ToolsList />} />
+              <Route path="/" element={<Home />} />
+              <Route path="/tools" element={<ToolsList />} />
               <Route path="/challenges" element={<ChallengesList />} />
             </Routes>
           </Container>
