@@ -173,7 +173,11 @@ const ChallengesList = () => {
         category: newChallenge.category,
         difficulty: newChallenge.difficulty,
         correct_flag: newChallenge.correct_flag.trim(),
-        resources: newChallenge.resources || {}
+        resources: {
+          files: [],
+          links: [],
+          commands: []
+        }
       };
 
       console.log('Données envoyées:', challengeData);
@@ -181,12 +185,55 @@ const ChallengesList = () => {
       console.log('Réponse du serveur:', response.data);
       
       // Upload des fichiers en attente
-      for (const file of pendingFiles) {
-        await handleFileUpload(response.data.id, file);
+      if (pendingFiles.length > 0) {
+        const updatedChallenge = { ...response.data };
+        const uploadPromises = pendingFiles.map(async (file) => {
+          try {
+            const formData = new FormData();
+            formData.append('file', file);
+            const fileResponse = await axios.post(
+              `http://localhost:8000/challenges/${response.data.id}/files`,
+              formData,
+              {
+                headers: {
+                  'Content-Type': 'multipart/form-data',
+                },
+              }
+            );
+            console.log('Fichier uploadé avec succès:', fileResponse.data);
+            return fileResponse.data;
+          } catch (error) {
+            console.error('Erreur lors de l\'upload du fichier:', error);
+            if (error instanceof AxiosError && error.response) {
+              throw new Error(error.response.data.detail || 'Erreur lors de l\'upload du fichier');
+            }
+            throw error;
+          }
+        });
+
+        try {
+          const uploadedFiles = await Promise.all(uploadPromises);
+          // Mettre à jour les ressources avec les fichiers uploadés
+          updatedChallenge.resources.files = uploadedFiles;
+          
+          // Mettre à jour le challenge dans la base de données
+          await axios.put(`http://localhost:8000/challenges/${response.data.id}`, updatedChallenge);
+          
+          // Mettre à jour l'état local
+          setChallenges(prevChallenges => [...prevChallenges, updatedChallenge]);
+          setPendingFiles([]); // Réinitialiser les fichiers en attente
+        } catch (error) {
+          console.error('Erreur lors de l\'upload des fichiers:', error);
+          setError(error instanceof Error ? error.message : 'Une erreur est survenue lors de l\'upload des fichiers');
+          // Supprimer le challenge si l'upload des fichiers échoue
+          await axios.delete(`http://localhost:8000/challenges/${response.data.id}`);
+          return;
+        }
+      } else {
+        setChallenges(prevChallenges => [...prevChallenges, response.data]);
       }
-      
+
       handleClose();
-      fetchChallenges();
       setNewChallenge({
         title: '',
         description: '',
@@ -199,10 +246,8 @@ const ChallengesList = () => {
           files: [],
         },
       });
-      setPendingFiles([]);
-      setError(null);
     } catch (error) {
-      console.error('Erreur lors de l\'ajout du challenge:', error);
+      console.error('Erreur lors de la création du challenge:', error);
       if (error instanceof AxiosError && error.response) {
         setError(error.response.data.detail || 'Une erreur est survenue lors de la création du challenge');
       } else {
@@ -294,7 +339,7 @@ const ChallengesList = () => {
   const handleFileUpload = async (challengeId: number | null, file: File) => {
     if (!challengeId) {
       // Si pas d'ID, c'est un nouveau challenge, on stocke le fichier en attente
-      setPendingFiles([...pendingFiles, file]);
+      setPendingFiles(prev => [...prev, file]);
       return;
     }
 
@@ -320,19 +365,20 @@ const ChallengesList = () => {
       }
       
       // Mettre à jour la liste des challenges
-      const updatedChallenges = challenges.map(challenge => {
-        if (challenge.id === challengeId) {
-          return {
-            ...challenge,
-            resources: {
-              ...challenge.resources,
-              files: [...(challenge.resources?.files || []), response.data]
-            }
-          };
-        }
-        return challenge;
-      });
-      setChallenges(updatedChallenges);
+      setChallenges(prevChallenges => 
+        prevChallenges.map(challenge => {
+          if (challenge.id === challengeId) {
+            return {
+              ...challenge,
+              resources: {
+                ...challenge.resources,
+                files: [...(challenge.resources?.files || []), response.data]
+              }
+            };
+          }
+          return challenge;
+        })
+      );
     } catch (error) {
       console.error('Erreur lors de l\'upload du fichier:', error);
       if (error instanceof AxiosError && error.response) {
@@ -370,25 +416,63 @@ const ChallengesList = () => {
 
   const handleFileDownload = async (challengeId: number, filename: string, originalName: string) => {
     try {
+      console.log(`Tentative de téléchargement du fichier ${filename} pour le challenge ${challengeId}`);
       const response = await axios.get(
         `http://localhost:8000/challenges/${challengeId}/files/${filename}`,
-        { responseType: 'blob' }
+        { 
+          responseType: 'blob',
+          headers: {
+            'Accept': 'application/octet-stream'
+          }
+        }
       );
       
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      // Vérifier si la réponse est un blob
+      if (!(response.data instanceof Blob)) {
+        throw new Error('La réponse n\'est pas un blob');
+      }
+      
+      // Créer un URL pour le blob
+      const url = window.URL.createObjectURL(response.data);
+      
+      // Créer un lien temporaire pour le téléchargement
       const link = document.createElement('a');
       link.href = url;
       link.setAttribute('download', originalName);
+      
+      // Ajouter le lien au document et cliquer dessus
       document.body.appendChild(link);
       link.click();
-      link.remove();
+      
+      // Nettoyer
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      console.log('Téléchargement terminé avec succès');
     } catch (error) {
       console.error('Erreur lors du téléchargement du fichier:', error);
       if (error instanceof AxiosError && error.response) {
-        setError(error.response.data.detail || 'Une erreur est survenue lors du téléchargement du fichier');
+        // Si c'est une erreur Axios, essayer de lire le message d'erreur du blob
+        if (error.response.data instanceof Blob) {
+          const reader = new FileReader();
+          reader.onload = () => {
+            try {
+              const errorMessage = JSON.parse(reader.result as string);
+              setError(errorMessage.detail || 'Une erreur est survenue lors du téléchargement du fichier');
+            } catch (e) {
+              setError('Une erreur est survenue lors du téléchargement du fichier');
+            }
+          };
+          reader.readAsText(error.response.data);
+        } else {
+          setError(error.response.data.detail || 'Une erreur est survenue lors du téléchargement du fichier');
+        }
       } else {
         setError('Une erreur est survenue lors du téléchargement du fichier');
       }
+      
+      // Rafraîchir la liste des challenges pour s'assurer que les données sont à jour
+      fetchChallenges();
     }
   };
 
