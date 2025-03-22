@@ -57,4 +57,44 @@ class Challenge(ChallengeBase):
         from_attributes = True
 
 class FlagCheck(BaseModel):
-    flag: str 
+    flag: str
+
+class NoteBase(BaseModel):
+    title: str
+    content: str
+    tags: Optional[List[str]] = []
+    is_favorite: Optional[bool] = False
+    folder_id: Optional[int] = None
+    parent_id: Optional[int] = None
+
+class NoteCreate(NoteBase):
+    pass
+
+class Note(NoteBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+    children: List['Note'] = []
+    
+    class Config:
+        from_attributes = True
+
+class FolderBase(BaseModel):
+    name: str
+    parent_id: Optional[int] = None
+
+class FolderCreate(FolderBase):
+    pass
+
+class Folder(FolderBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+    children: List['Folder'] = []
+    notes: List[Note] = []
+    
+    class Config:
+        from_attributes = True
+
+Note.model_rebuild()
+Folder.model_rebuild() 

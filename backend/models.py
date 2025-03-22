@@ -43,4 +43,34 @@ class File(Base):
     
     challenge = relationship("Challenge", back_populates="files")
 
+class Folder(Base):
+    __tablename__ = "folders"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(200), nullable=False)
+    parent_id = Column(Integer, ForeignKey("folders.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relations
+    parent = relationship("Folder", remote_side=[id], backref="children")
+    notes = relationship("Note", back_populates="folder")
+
+class Note(Base):
+    __tablename__ = "notes"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(200), nullable=False)
+    content = Column(Text, nullable=False)
+    tags = Column(JSON, default=lambda: [])
+    is_favorite = Column(Boolean, default=False)
+    folder_id = Column(Integer, ForeignKey("folders.id"), nullable=True)
+    parent_id = Column(Integer, ForeignKey("notes.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relations
+    folder = relationship("Folder", back_populates="notes")
+    parent = relationship("Note", remote_side=[id], backref="children")
+
 Challenge.files = relationship("File", back_populates="challenge") 

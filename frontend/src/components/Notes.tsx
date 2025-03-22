@@ -1,17 +1,8 @@
 import React from 'react';
-import { Box, Typography } from '@mui/material';
+import { NotesPage } from './notes/NotesPage';
 
-const Notes = () => {
-  return (
-    <Box>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Notes
-      </Typography>
-      <Typography variant="body1" color="text.secondary">
-        Page en construction...
-      </Typography>
-    </Box>
-  );
+const Notes: React.FC = () => {
+    return <NotesPage />;
 };
 
 export default Notes; 
