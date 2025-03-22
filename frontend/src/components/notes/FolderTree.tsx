@@ -156,55 +156,65 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
 
         return (
             <DroppableFolder key={folder.id} id={folder.id} onFolderMove={onFolderMove}>
-                <ListItemButton
-                    onClick={() => {
-                        onFolderSelect(folder);
-                        if (hasChildren) {
-                            toggleFolder(folder.id);
-                        }
-                    }}
-                    onContextMenu={(e) => handleContextMenu(e, folder.id)}
-                    sx={{ pl: level * 2 }}
-                >
-                    <ListItemIcon sx={{ minWidth: 32 }}>
-                        {hasChildren && (
-                            isExpanded ? <ExpandMore /> : <ChevronRight />
-                        )}
-                    </ListItemIcon>
-                    <ListItemIcon>
-                        <FolderIcon />
-                    </ListItemIcon>
-                    <ListItemText primary={folder.name} />
-                    <IconButton
-                        size="small"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            handleContextMenu(e, folder.id);
+                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                    <ListItemButton
+                        onClick={() => {
+                            onFolderSelect(folder);
+                            if (hasChildren) {
+                                toggleFolder(folder.id);
+                            }
+                        }}
+                        onContextMenu={(e) => handleContextMenu(e, folder.id)}
+                        sx={{ 
+                            pl: level * 2,
+                            minHeight: 40,
+                            py: 0
                         }}
                     >
-                        <MoreVertIcon />
-                    </IconButton>
-                </ListItemButton>
+                        <ListItemIcon sx={{ minWidth: 32 }}>
+                            {hasChildren && (
+                                isExpanded ? <ExpandMore /> : <ChevronRight />
+                            )}
+                        </ListItemIcon>
+                        <ListItemIcon>
+                            <FolderIcon />
+                        </ListItemIcon>
+                        <ListItemText primary={folder.name} />
+                        <IconButton
+                            size="small"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleContextMenu(e, folder.id);
+                            }}
+                        >
+                            <MoreVertIcon />
+                        </IconButton>
+                    </ListItemButton>
 
-                {isExpanded && (
-                    <>
-                        {folderNotes.map(note => (
-                            <DraggableItem key={note.id} id={note.id} type="note">
-                                <ListItemButton
-                                    onClick={() => onNoteSelect(note)}
-                                    sx={{ pl: (level + 1) * 2 + 32 }}
-                                >
-                                    <ListItemIcon>
-                                        <NoteIcon />
-                                    </ListItemIcon>
-                                    <ListItemText primary={note.title} />
-                                </ListItemButton>
-                            </DraggableItem>
-                        ))}
+                    {isExpanded && (
+                        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                            {folderNotes.map(note => (
+                                <DraggableItem key={note.id} id={note.id} type="note">
+                                    <ListItemButton
+                                        onClick={() => onNoteSelect(note)}
+                                        sx={{ 
+                                            pl: (level + 1) * 2 + 32,
+                                            minHeight: 40,
+                                            py: 0
+                                        }}
+                                    >
+                                        <ListItemIcon>
+                                            <NoteIcon />
+                                        </ListItemIcon>
+                                        <ListItemText primary={note.title} />
+                                    </ListItemButton>
+                                </DraggableItem>
+                            ))}
 
-                        {childFolders.map(childFolder => renderFolder(childFolder, level + 1))}
-                    </>
-                )}
+                            {childFolders.map(childFolder => renderFolder(childFolder, level + 1))}
+                        </Box>
+                    )}
+                </Box>
             </DroppableFolder>
         );
     };
@@ -217,16 +227,18 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
-                        mb: 2,
+                        p: 1,
+                        borderBottom: 1,
+                        borderColor: 'divider',
                     }}
                 >
                     <Typography variant="h6">Dossiers</Typography>
-                    <IconButton onClick={() => onCreateFolder(null)}>
+                    <IconButton onClick={() => onCreateFolder(null)} size="small">
                         <CreateNewFolderIcon />
                     </IconButton>
                 </Box>
 
-                <List>
+                <List sx={{ py: 0 }}>
                     {folders
                         .filter(folder => !folder.parent_id)
                         .map(folder => renderFolder(folder))}

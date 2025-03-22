@@ -70,34 +70,20 @@ export const NotesPage: React.FC = () => {
     const handleAutoSave = async (noteData: Partial<Note>) => {
         try {
             const activeNote = openNotes.find(n => n.id === activeNoteId);
+            if (!activeNote) return;
+            
             const effectiveFolderId = noteData.folder_id !== undefined ? noteData.folder_id : selectedFolder?.id || null;
             
-            if (activeNote && activeNote.id !== -1) {
-                await fetch(`${API_URL}/notes/${activeNote.id}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        ...noteData,
-                        folder_id: effectiveFolderId,
-                    }),
-                });
-            } else {
-                const response = await fetch(`${API_URL}/notes`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        ...noteData,
-                        folder_id: effectiveFolderId,
-                    }),
-                });
-                const newNote = await response.json();
-                setOpenNotes(prev => prev.map(n => n.id === -1 ? newNote : n));
-                setActiveNoteId(newNote.id);
-            }
+            await fetch(`${API_URL}/notes/${activeNote.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    ...noteData,
+                    folder_id: effectiveFolderId,
+                }),
+            });
             await fetchNotes();
         } catch (error) {
             console.error('Erreur lors de la sauvegarde de la note:', error);
@@ -137,22 +123,31 @@ export const NotesPage: React.FC = () => {
         }
     };
 
-    const handleCreateNote = (folderId: number | null = null) => {
+    const handleCreateNote = async (folderId: number | null = null) => {
         const effectiveFolderId = folderId !== null ? folderId : selectedFolder?.id || null;
-        const newNote: Note = {
-            id: -1, // Temporaire
-            title: 'Nouvelle note',
-            content: '',
-            tags: [],
-            is_favorite: false,
-            folder_id: effectiveFolderId,
-            parent_id: null,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-        };
-        setOpenNotes([...openNotes, newNote]);
-        setActiveNoteId(-1);
-        setIsEditing(true);
+        try {
+            const response = await fetch(`${API_URL}/notes`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    title: 'Nouvelle note',
+                    content: '',
+                    tags: [],
+                    is_favorite: false,
+                    folder_id: effectiveFolderId,
+                    parent_id: null,
+                }),
+            });
+            const newNote = await response.json();
+            await fetchNotes();
+            setOpenNotes([...openNotes, newNote]);
+            setActiveNoteId(newNote.id);
+            setIsEditing(true);
+        } catch (error) {
+            console.error('Erreur lors de la création de la note:', error);
+        }
     };
 
     const handleFolderSelect = (folder: Folder) => {
@@ -217,7 +212,7 @@ export const NotesPage: React.FC = () => {
 
     return (
         <Box sx={{ height: '100vh', display: 'flex' }}>
-            <Box sx={{ width: 250, borderRight: 1, borderColor: 'divider', overflow: 'auto' }}>
+            <Box sx={{ width: 250, borderRight: 1, borderColor: 'divider', overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
                 <FolderTree
                     folders={folders}
                     notes={notes}
@@ -229,7 +224,17 @@ export const NotesPage: React.FC = () => {
                     onFolderDelete={handleFolderDelete}
                 />
             </Box>
-            <Box sx={{ width: 300, borderRight: 1, borderColor: 'divider', overflow: 'auto' }}>
+            <Box sx={{ 
+                width: 300, 
+                borderRight: 1, 
+                borderColor: 'divider', 
+                overflow: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                '& .MuiList-root': {
+                    padding: 0
+                }
+            }}>
                 <NoteList
                     notes={filteredNotes}
                     onNoteSelect={handleNoteSelect}
@@ -252,7 +257,6 @@ export const NotesPage: React.FC = () => {
                             <NoteEditor
                                 note={activeNote}
                                 onSave={handleAutoSave}
-                                autoSave={true}
                             />
                         ) : (
                             <Box sx={{ p: 3, bgcolor: 'background.paper', borderRadius: 1 }}>

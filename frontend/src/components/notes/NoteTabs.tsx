@@ -36,16 +36,20 @@ export const NoteTabs: React.FC<NoteTabsProps> = ({
                         label={
                             <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                 {note.title}
-                                <IconButton
-                                    size="small"
+                                <span
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         onNoteClose(note.id);
                                     }}
-                                    sx={{ ml: 1 }}
+                                    style={{
+                                        marginLeft: '8px',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center'
+                                    }}
                                 >
                                     <CloseIcon fontSize="small" />
-                                </IconButton>
+                                </span>
                             </Box>
                         }
                     />

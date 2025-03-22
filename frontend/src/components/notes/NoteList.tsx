@@ -11,6 +11,7 @@ import {
     MenuItem,
     ListItemSecondaryAction,
     Button,
+    ListItemButton,
 } from '@mui/material';
 import {
     Note as NoteIcon,
@@ -69,7 +70,7 @@ export const NoteList: React.FC<NoteListProps> = ({
 
     if (notes.length === 0) {
         return (
-            <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+            <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                 <Typography color="text.secondary">Aucune note dans ce carnet</Typography>
                 <Button
                     variant="contained"
@@ -83,26 +84,34 @@ export const NoteList: React.FC<NoteListProps> = ({
     }
 
     return (
-        <Box>
-            <Box sx={{ p: 2, display: 'flex', justifyContent: 'flex-end' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <Box sx={{ p: 1, borderBottom: 1, borderColor: 'divider' }}>
                 <Button
                     variant="contained"
                     startIcon={<AddIcon />}
                     onClick={onCreateNote}
                     size="small"
+                    fullWidth
                 >
                     Nouvelle note
                 </Button>
             </Box>
-            <List>
+            <List sx={{ flex: 1, overflow: 'auto', py: 0 }}>
                 {notes.map((note) => (
-                    <ListItem
+                    <ListItemButton
                         key={note.id}
-                        button
                         onClick={() => onNoteSelect(note)}
                         onContextMenu={(e) => handleContextMenu(e, note.id)}
+                        sx={{ 
+                            py: 1,
+                            borderBottom: '1px solid',
+                            borderColor: 'divider',
+                            '&:last-child': {
+                                borderBottom: 'none'
+                            }
+                        }}
                     >
-                        <ListItemIcon>
+                        <ListItemIcon sx={{ minWidth: 40 }}>
                             <NoteIcon />
                         </ListItemIcon>
                         <ListItemText
@@ -117,11 +126,13 @@ export const NoteList: React.FC<NoteListProps> = ({
                                         display: '-webkit-box',
                                         WebkitLineClamp: 2,
                                         WebkitBoxOrient: 'vertical',
+                                        m: 0
                                     }}
                                 >
                                     {note.content.replace(/[#*`]/g, '')}
                                 </Typography>
                             }
+                            sx={{ my: 0 }}
                         />
                         <ListItemSecondaryAction>
                             <IconButton
@@ -130,6 +141,7 @@ export const NoteList: React.FC<NoteListProps> = ({
                                     e.stopPropagation();
                                     onNoteFavorite(note.id, !note.is_favorite);
                                 }}
+                                size="small"
                             >
                                 {note.is_favorite ? <Star color="primary" /> : <StarBorder />}
                             </IconButton>
@@ -139,11 +151,12 @@ export const NoteList: React.FC<NoteListProps> = ({
                                     e.stopPropagation();
                                     onNoteEdit(note);
                                 }}
+                                size="small"
                             >
                                 <EditIcon />
                             </IconButton>
                         </ListItemSecondaryAction>
-                    </ListItem>
+                    </ListItemButton>
                 ))}
             </List>
 
