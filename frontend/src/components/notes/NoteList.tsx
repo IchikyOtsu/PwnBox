@@ -116,22 +116,6 @@ export const NoteList: React.FC<NoteListProps> = ({
                         </ListItemIcon>
                         <ListItemText
                             primary={note.title}
-                            secondary={
-                                <Typography
-                                    variant="body2"
-                                    color="text.secondary"
-                                    sx={{
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        display: '-webkit-box',
-                                        WebkitLineClamp: 2,
-                                        WebkitBoxOrient: 'vertical',
-                                        m: 0
-                                    }}
-                                >
-                                    {note.content.replace(/[#*`]/g, '')}
-                                </Typography>
-                            }
                             sx={{ my: 0 }}
                         />
                         <ListItemSecondaryAction>
