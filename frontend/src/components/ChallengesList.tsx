@@ -33,7 +33,20 @@ import FlagIcon from '@mui/icons-material/Flag';
 import SortIcon from '@mui/icons-material/Sort';
 import SortByAlphaIcon from '@mui/icons-material/SortByAlpha';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import DownloadIcon from '@mui/icons-material/Download';
 import axios, { AxiosError } from 'axios';
+
+interface FileResource {
+  filename: string;
+  original_name: string;
+}
+
+interface ChallengeResources {
+  files?: FileResource[];
+  links?: string[];
+  commands?: string[];
+}
 
 interface Challenge {
   id: number;
@@ -41,13 +54,10 @@ interface Challenge {
   description: string;
   category: string;
   difficulty: string;
+  points: number;
   solved: boolean;
   correct_flag?: string;
-  resources?: {
-    links?: string[];
-    commands?: string[];
-    files?: string[];
-  };
+  resources?: ChallengeResources;
   created_at: string;
   updated_at: string;
 }
@@ -82,6 +92,7 @@ const ChallengesList = () => {
   const [flagSuccess, setFlagSuccess] = useState(false);
   const [sortField, setSortField] = useState<SortField>('created_at');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
   useEffect(() => {
     fetchChallenges();
@@ -162,15 +173,67 @@ const ChallengesList = () => {
         category: newChallenge.category,
         difficulty: newChallenge.difficulty,
         correct_flag: newChallenge.correct_flag.trim(),
-        resources: newChallenge.resources || {}
+        resources: {
+          files: [],
+          links: [],
+          commands: []
+        }
       };
 
       console.log('Données envoyées:', challengeData);
       const response = await axios.post('http://localhost:8000/challenges/', challengeData);
       console.log('Réponse du serveur:', response.data);
       
+      // Upload des fichiers en attente
+      if (pendingFiles.length > 0) {
+        const updatedChallenge = { ...response.data };
+        const uploadPromises = pendingFiles.map(async (file) => {
+          try {
+            const formData = new FormData();
+            formData.append('file', file);
+            const fileResponse = await axios.post(
+              `http://localhost:8000/challenges/${response.data.id}/files`,
+              formData,
+              {
+                headers: {
+                  'Content-Type': 'multipart/form-data',
+                },
+              }
+            );
+            console.log('Fichier uploadé avec succès:', fileResponse.data);
+            return fileResponse.data;
+          } catch (error) {
+            console.error('Erreur lors de l\'upload du fichier:', error);
+            if (error instanceof AxiosError && error.response) {
+              throw new Error(error.response.data.detail || 'Erreur lors de l\'upload du fichier');
+            }
+            throw error;
+          }
+        });
+
+        try {
+          const uploadedFiles = await Promise.all(uploadPromises);
+          // Mettre à jour les ressources avec les fichiers uploadés
+          updatedChallenge.resources.files = uploadedFiles;
+          
+          // Mettre à jour le challenge dans la base de données
+          await axios.put(`http://localhost:8000/challenges/${response.data.id}`, updatedChallenge);
+          
+          // Mettre à jour l'état local
+          setChallenges(prevChallenges => [...prevChallenges, updatedChallenge]);
+          setPendingFiles([]); // Réinitialiser les fichiers en attente
+        } catch (error) {
+          console.error('Erreur lors de l\'upload des fichiers:', error);
+          setError(error instanceof Error ? error.message : 'Une erreur est survenue lors de l\'upload des fichiers');
+          // Supprimer le challenge si l'upload des fichiers échoue
+          await axios.delete(`http://localhost:8000/challenges/${response.data.id}`);
+          return;
+        }
+      } else {
+        setChallenges(prevChallenges => [...prevChallenges, response.data]);
+      }
+
       handleClose();
-      fetchChallenges();
       setNewChallenge({
         title: '',
         description: '',
@@ -183,9 +246,8 @@ const ChallengesList = () => {
           files: [],
         },
       });
-      setError(null);
     } catch (error) {
-      console.error('Erreur lors de l\'ajout du challenge:', error);
+      console.error('Erreur lors de la création du challenge:', error);
       if (error instanceof AxiosError && error.response) {
         setError(error.response.data.detail || 'Une erreur est survenue lors de la création du challenge');
       } else {
@@ -271,6 +333,161 @@ const ChallengesList = () => {
     } catch (error) {
       console.error('Erreur lors de la vérification du flag:', error);
       setFlagError('Une erreur est survenue lors de la vérification du flag');
+    }
+  };
+
+  const handleFileUpload = async (challengeId: number | null, file: File) => {
+    if (!challengeId) {
+      // Si pas d'ID, c'est un nouveau challenge, on stocke le fichier en attente
+      setPendingFiles(prev => [...prev, file]);
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await axios.post(`http://localhost:8000/challenges/${challengeId}/files`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      // Mettre à jour l'état local
+      if (editingChallenge && editingChallenge.id === challengeId) {
+        setEditingChallenge({
+          ...editingChallenge,
+          resources: {
+            ...editingChallenge.resources,
+            files: [...(editingChallenge.resources?.files || []), response.data]
+          }
+        });
+      }
+      
+      // Mettre à jour la liste des challenges
+      setChallenges(prevChallenges => 
+        prevChallenges.map(challenge => {
+          if (challenge.id === challengeId) {
+            return {
+              ...challenge,
+              resources: {
+                ...challenge.resources,
+                files: [...(challenge.resources?.files || []), response.data]
+              }
+            };
+          }
+          return challenge;
+        })
+      );
+    } catch (error) {
+      console.error('Erreur lors de l\'upload du fichier:', error);
+      if (error instanceof AxiosError && error.response) {
+        setError(error.response.data.detail || 'Une erreur est survenue lors de l\'upload du fichier');
+      } else {
+        setError('Une erreur est survenue lors de l\'upload du fichier');
+      }
+    }
+  };
+
+  const handleFileDelete = async (challengeId: number, filename: string) => {
+    try {
+      await axios.delete(`http://localhost:8000/challenges/${challengeId}/files/${filename}`);
+      
+      // Mettre à jour l'état local
+      if (editingChallenge && editingChallenge.id === challengeId) {
+        setEditingChallenge({
+          ...editingChallenge,
+          resources: {
+            ...editingChallenge.resources,
+            files: editingChallenge.resources?.files?.filter(file => file.filename !== filename) || []
+          }
+        });
+      }
+
+      // Mettre à jour la liste des challenges
+      setChallenges(prevChallenges => 
+        prevChallenges.map(challenge => {
+          if (challenge.id === challengeId) {
+            return {
+              ...challenge,
+              resources: {
+                ...challenge.resources,
+                files: challenge.resources?.files?.filter(file => file.filename !== filename) || []
+              }
+            };
+          }
+          return challenge;
+        })
+      );
+    } catch (error) {
+      console.error('Erreur lors de la suppression du fichier:', error);
+      if (error instanceof AxiosError && error.response) {
+        setError(error.response.data.detail || 'Une erreur est survenue lors de la suppression du fichier');
+      } else {
+        setError('Une erreur est survenue lors de la suppression du fichier');
+      }
+    }
+  };
+
+  const handleFileDownload = async (challengeId: number, filename: string, originalName: string) => {
+    try {
+      console.log(`Tentative de téléchargement du fichier ${filename} pour le challenge ${challengeId}`);
+      const response = await axios.get(
+        `http://localhost:8000/challenges/${challengeId}/files/${filename}`,
+        { 
+          responseType: 'blob',
+          headers: {
+            'Accept': 'application/octet-stream'
+          }
+        }
+      );
+      
+      // Vérifier si la réponse est un blob
+      if (!(response.data instanceof Blob)) {
+        throw new Error('La réponse n\'est pas un blob');
+      }
+      
+      // Créer un URL pour le blob
+      const url = window.URL.createObjectURL(response.data);
+      
+      // Créer un lien temporaire pour le téléchargement
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', originalName);
+      
+      // Ajouter le lien au document et cliquer dessus
+      document.body.appendChild(link);
+      link.click();
+      
+      // Nettoyer
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      console.log('Téléchargement terminé avec succès');
+    } catch (error) {
+      console.error('Erreur lors du téléchargement du fichier:', error);
+      if (error instanceof AxiosError && error.response) {
+        // Si c'est une erreur Axios, essayer de lire le message d'erreur du blob
+        if (error.response.data instanceof Blob) {
+          const reader = new FileReader();
+          reader.onload = () => {
+            try {
+              const errorMessage = JSON.parse(reader.result as string);
+              setError(errorMessage.detail || 'Une erreur est survenue lors du téléchargement du fichier');
+            } catch (e) {
+              setError('Une erreur est survenue lors du téléchargement du fichier');
+            }
+          };
+          reader.readAsText(error.response.data);
+        } else {
+          setError(error.response.data.detail || 'Une erreur est survenue lors du téléchargement du fichier');
+        }
+      } else {
+        setError('Une erreur est survenue lors du téléchargement du fichier');
+      }
+      
+      // Rafraîchir la liste des challenges pour s'assurer que les données sont à jour
+      fetchChallenges();
     }
   };
 
@@ -692,23 +909,35 @@ const ChallengesList = () => {
                         </Typography>
                         <Stack spacing={1}>
                           {selectedChallenge.resources.files.map((file, index) => (
-                            <Button
+                            <Box
                               key={index}
-                              variant="outlined"
-                              size="small"
-                              href={file}
-                              target="_blank"
                               sx={{
-                                borderColor: 'primary.main',
-                                color: 'primary.main',
-                                '&:hover': {
-                                  borderColor: 'primary.light',
-                                  backgroundColor: 'rgba(0, 255, 0, 0.1)',
-                                },
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 1,
+                                p: 1,
+                                borderRadius: 1,
+                                bgcolor: 'rgba(0, 255, 0, 0.1)',
                               }}
                             >
-                              Télécharger le fichier
-                            </Button>
+                              <Typography sx={{ flex: 1 }}>{file.original_name}</Typography>
+                              <Button
+                                variant="outlined"
+                                size="small"
+                                startIcon={<DownloadIcon />}
+                                onClick={() => handleFileDownload(selectedChallenge.id, file.filename, file.original_name)}
+                                sx={{
+                                  borderColor: 'primary.main',
+                                  color: 'primary.main',
+                                  '&:hover': {
+                                    borderColor: 'primary.light',
+                                    backgroundColor: 'rgba(0, 255, 0, 0.1)',
+                                  },
+                                }}
+                              >
+                                Télécharger
+                              </Button>
+                            </Box>
                           ))}
                         </Stack>
                       </Box>
@@ -856,6 +1085,70 @@ const ChallengesList = () => {
               fullWidth
               helperText="Flag correct pour la validation"
             />
+            <Box>
+              <Typography variant="subtitle1" color="text.secondary" gutterBottom>
+                Fichiers
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                <Button
+                  variant="outlined"
+                  component="label"
+                  startIcon={<CloudUploadIcon />}
+                  sx={{
+                    borderColor: 'primary.main',
+                    color: 'primary.main',
+                    '&:hover': {
+                      borderColor: 'primary.light',
+                      backgroundColor: 'rgba(0, 255, 0, 0.1)',
+                    },
+                  }}
+                >
+                  Ajouter un fichier
+                  <input
+                    type="file"
+                    hidden
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        handleFileUpload(null, e.target.files[0]);
+                      }
+                    }}
+                  />
+                </Button>
+              </Box>
+              {pendingFiles.length > 0 && (
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                    Fichiers en attente
+                  </Typography>
+                  <Stack spacing={1}>
+                    {pendingFiles.map((file, index) => (
+                      <Box
+                        key={index}
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1,
+                          p: 1,
+                          borderRadius: 1,
+                          bgcolor: 'rgba(0, 255, 0, 0.1)',
+                        }}
+                      >
+                        <Typography sx={{ flex: 1 }}>{file.name}</Typography>
+                        <IconButton
+                          size="small"
+                          onClick={() => {
+                            setPendingFiles(pendingFiles.filter((_, i) => i !== index));
+                          }}
+                          sx={{ color: 'error.main' }}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </Box>
+                    ))}
+                  </Stack>
+                </Box>
+              )}
+            </Box>
           </Box>
         </DialogContent>
         <DialogActions>
@@ -888,7 +1181,7 @@ const ChallengesList = () => {
           }
         }}
       >
-        {editingChallenge && (
+        {editingChallenge !== null && editingChallenge !== undefined && (
           <>
             <DialogTitle>Modifier le challenge</DialogTitle>
             <DialogContent>
@@ -955,6 +1248,75 @@ const ChallengesList = () => {
                   fullWidth
                   helperText="Flag correct pour la validation"
                 />
+                <Box>
+                  <Typography variant="subtitle1" color="text.secondary" gutterBottom>
+                    Fichiers
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                    <Button
+                      variant="outlined"
+                      component="label"
+                      startIcon={<CloudUploadIcon />}
+                      sx={{
+                        borderColor: 'primary.main',
+                        color: 'primary.main',
+                        '&:hover': {
+                          borderColor: 'primary.light',
+                          backgroundColor: 'rgba(0, 255, 0, 0.1)',
+                        },
+                      }}
+                    >
+                      Ajouter un fichier
+                      <input
+                        type="file"
+                        hidden
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files[0]) {
+                            handleFileUpload(editingChallenge.id, e.target.files[0]);
+                          }
+                        }}
+                      />
+                    </Button>
+                  </Box>
+                  {editingChallenge.resources?.files && editingChallenge.resources.files.length > 0 && (
+                    <Box sx={{ mt: 2 }}>
+                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                        Fichiers existants
+                      </Typography>
+                      <Stack spacing={1}>
+                        {editingChallenge.resources.files.map((file, index) => (
+                          <Box
+                            key={index}
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 1,
+                              p: 1,
+                              borderRadius: 1,
+                              bgcolor: 'rgba(0, 255, 0, 0.1)',
+                            }}
+                          >
+                            <Typography sx={{ flex: 1 }}>{file.original_name}</Typography>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleFileDownload(editingChallenge.id, file.filename, file.original_name)}
+                              sx={{ color: 'primary.main' }}
+                            >
+                              <DownloadIcon />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleFileDelete(editingChallenge.id, file.filename)}
+                              sx={{ color: 'error.main' }}
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </Box>
+                        ))}
+                      </Stack>
+                    </Box>
+                  )}
+                </Box>
               </Box>
             </DialogContent>
             <DialogActions>

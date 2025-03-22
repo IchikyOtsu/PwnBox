@@ -5,7 +5,7 @@ from pydantic import BaseModel
 import uvicorn
 from . import models
 from .database import engine
-from .routes import tools, challenges
+from .routes import tools, challenges, notes, folders
 
 # Créer les tables dans la base de données si elles n'existent pas déjà
 print("Vérification de la structure de la base de données...")
@@ -26,6 +26,8 @@ app.add_middleware(
 # Inclure les routes
 app.include_router(tools.router)
 app.include_router(challenges.router)
+app.include_router(notes.router)
+app.include_router(folders.router)
 
 @app.get("/")
 async def root():
@@ -34,7 +36,8 @@ async def root():
         "version": "1.0.0",
         "endpoints": {
             "tools": "/tools",
-            "challenges": "/challenges"
+            "challenges": "/challenges",
+            "notes": "/notes"
         }
     }
 
