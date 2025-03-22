@@ -23,7 +23,7 @@ export const NotesPage: React.FC = () => {
 
     const fetchNotes = async () => {
         try {
-            const response = await fetch(`${API_URL}/notes`);
+            const response = await fetch(`${API_URL}/notes/`);
             const data = await response.json();
             setNotes(data);
         } catch (error) {
@@ -33,7 +33,7 @@ export const NotesPage: React.FC = () => {
 
     const fetchFolders = async () => {
         try {
-            const response = await fetch(`${API_URL}/folders`);
+            const response = await fetch(`${API_URL}/folders/`);
             const data = await response.json();
             setFolders(data);
         } catch (error) {
@@ -74,7 +74,7 @@ export const NotesPage: React.FC = () => {
             
             const effectiveFolderId = noteData.folder_id !== undefined ? noteData.folder_id : selectedFolder?.id || null;
             
-            await fetch(`${API_URL}/notes/${activeNote.id}`, {
+            await fetch(`${API_URL}/notes/${activeNote.id}/`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -126,7 +126,7 @@ export const NotesPage: React.FC = () => {
     const handleCreateNote = async (folderId: number | null = null) => {
         const effectiveFolderId = folderId !== null ? folderId : selectedFolder?.id || null;
         try {
-            const response = await fetch(`${API_URL}/notes`, {
+            const response = await fetch(`${API_URL}/notes/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -158,7 +158,7 @@ export const NotesPage: React.FC = () => {
         try {
             const name = prompt('Nom du nouveau carnet:');
             if (name) {
-                await fetch(`${API_URL}/folders`, {
+                await fetch(`${API_URL}/folders/`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -177,7 +177,7 @@ export const NotesPage: React.FC = () => {
 
     const handleFolderMove = async (folderId: number, newParentId: number | null) => {
         try {
-            await fetch(`${API_URL}/folders/${folderId}/move`, {
+            await fetch(`${API_URL}/folders/${folderId}/move/`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -192,7 +192,7 @@ export const NotesPage: React.FC = () => {
 
     const handleFolderDelete = async (folderId: number) => {
         try {
-            await fetch(`${API_URL}/folders/${folderId}`, {
+            await fetch(`${API_URL}/folders/${folderId}/`, {
                 method: 'DELETE',
             });
             fetchFolders();
