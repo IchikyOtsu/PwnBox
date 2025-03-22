@@ -403,7 +403,22 @@ const ChallengesList = () => {
           }
         });
       }
-      fetchChallenges();
+
+      // Mettre à jour la liste des challenges
+      setChallenges(prevChallenges => 
+        prevChallenges.map(challenge => {
+          if (challenge.id === challengeId) {
+            return {
+              ...challenge,
+              resources: {
+                ...challenge.resources,
+                files: challenge.resources?.files?.filter(file => file.filename !== filename) || []
+              }
+            };
+          }
+          return challenge;
+        })
+      );
     } catch (error) {
       console.error('Erreur lors de la suppression du fichier:', error);
       if (error instanceof AxiosError && error.response) {
