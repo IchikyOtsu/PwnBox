@@ -38,13 +38,13 @@ interface FolderTreeProps {
 
 interface DraggableItemProps {
     id: number;
-    type: 'folder' | 'note';
+    type: string;
     children: React.ReactNode;
 }
 
 const DraggableItem: React.FC<DraggableItemProps> = ({ id, type, children }) => {
     const [{ isDragging }, drag] = useDrag({
-        type: 'ITEM',
+        type,
         item: { id, type },
         collect: (monitor) => ({
             isDragging: monitor.isDragging(),
@@ -52,16 +52,9 @@ const DraggableItem: React.FC<DraggableItemProps> = ({ id, type, children }) => 
     });
 
     return (
-        <Box
-            component="div"
-            ref={drag}
-            sx={{
-                opacity: isDragging ? 0.5 : 1,
-                cursor: 'move',
-            }}
-        >
+        <div ref={drag as any} style={{ opacity: isDragging ? 0.5 : 1 }}>
             {children}
-        </Box>
+        </div>
     );
 };
 
@@ -73,8 +66,8 @@ interface DroppableFolderProps {
 
 const DroppableFolder: React.FC<DroppableFolderProps> = ({ id, children, onFolderMove }) => {
     const [{ isOver }, drop] = useDrop({
-        accept: 'ITEM',
-        drop: (item: { id: number; type: 'folder' | 'note' }) => {
+        accept: ['folder', 'note'],
+        drop: (item: { id: number, type: string }) => {
             if (item.type === 'folder') {
                 onFolderMove(item.id, id);
             }
@@ -85,15 +78,9 @@ const DroppableFolder: React.FC<DroppableFolderProps> = ({ id, children, onFolde
     });
 
     return (
-        <Box
-            component="div"
-            ref={drop}
-            sx={{
-                backgroundColor: isOver ? 'rgba(0, 0, 0, 0.1)' : 'transparent',
-            }}
-        >
+        <div ref={drop as any} style={{ background: isOver ? 'rgba(0,0,0,0.1)' : 'transparent' }}>
             {children}
-        </Box>
+        </div>
     );
 };
 
@@ -149,10 +136,9 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
     };
 
     const renderFolder = (folder: Folder, level: number = 0) => {
-        const folderNotes = notes.filter(note => note.folder_id === folder.id);
         const childFolders = folders.filter(f => f.parent_id === folder.id);
         const isExpanded = expandedFolders.has(folder.id);
-        const hasChildren = childFolders.length > 0 || folderNotes.length > 0;
+        const hasSubFolders = childFolders.length > 0;
 
         return (
             <DroppableFolder key={folder.id} id={folder.id} onFolderMove={onFolderMove}>
@@ -160,23 +146,23 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
                     <ListItemButton
                         onClick={() => {
                             onFolderSelect(folder);
-                            if (hasChildren) {
+                            if (hasSubFolders) {
                                 toggleFolder(folder.id);
                             }
                         }}
                         onContextMenu={(e) => handleContextMenu(e, folder.id)}
                         sx={{ 
-                            pl: level * 2,
+                            pl: hasSubFolders ? level * 2 : level * 2 + 4,
                             minHeight: 40,
                             py: 0
                         }}
                     >
+                        {hasSubFolders && (
+                            <ListItemIcon sx={{ minWidth: 32 }}>
+                                {isExpanded ? <ExpandMore /> : <ChevronRight />}
+                            </ListItemIcon>
+                        )}
                         <ListItemIcon sx={{ minWidth: 32 }}>
-                            {hasChildren && (
-                                isExpanded ? <ExpandMore /> : <ChevronRight />
-                            )}
-                        </ListItemIcon>
-                        <ListItemIcon>
                             <FolderIcon />
                         </ListItemIcon>
                         <ListItemText primary={folder.name} />
@@ -191,26 +177,8 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
                         </IconButton>
                     </ListItemButton>
 
-                    {isExpanded && (
+                    {isExpanded && hasSubFolders && (
                         <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                            {folderNotes.map(note => (
-                                <DraggableItem key={note.id} id={note.id} type="note">
-                                    <ListItemButton
-                                        onClick={() => onNoteSelect(note)}
-                                        sx={{ 
-                                            pl: (level + 1) * 2 + 32,
-                                            minHeight: 40,
-                                            py: 0
-                                        }}
-                                    >
-                                        <ListItemIcon>
-                                            <NoteIcon />
-                                        </ListItemIcon>
-                                        <ListItemText primary={note.title} />
-                                    </ListItemButton>
-                                </DraggableItem>
-                            ))}
-
                             {childFolders.map(childFolder => renderFolder(childFolder, level + 1))}
                         </Box>
                     )}
